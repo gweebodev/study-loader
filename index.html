@@ -1,105 +1,226 @@
-<!DOCTYPE html>
-<html lang="en-us">
-
+<!--Go to https://www.w3schools.com/html/tryit.asp?filename=tryhtml_default#login–>
+<!--Place in a code editor.-->
+<!doctype html>
+<html lang="en">
 <head>
-    <base href="https://cdn.jsdelivr.net/gh/genizy/web-port@latest/ultrakill/">
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity WebGL Player | ULTRAKILL</title>
-    <style>
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            height: 100%;
-            width: 100%;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drag and Drop File</title>
 
-        #unity-container {
-            width: 100%;
-            height: 100%;
-            position: fixed;
-            top: 0;
-            left: 0;
-        }
-    </style>
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  overflow:hidden;
+  background:#fff;
+}
+
+#panel{
+  width:420px;
+  padding:20px;
+  border:2px dashed #aaa;
+  text-align:center;
+  font-size:18px;
+  color:#555;
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:#fff;
+  z-index:10;
+}
+
+#drop-area{
+  padding:40px 10px;
+  cursor:pointer;
+}
+
+#drop-area.drag{
+  background:#f0f0f0;
+}
+
+#html-input{
+  width:100%;
+  height:140px;
+  resize:vertical;
+  margin-top:15px;
+  box-sizing:border-box;
+  font-family:monospace;
+}
+
+#run-html{
+  margin-top:10px;
+  padding:10px 20px;
+  cursor:pointer;
+}
+
+#file-input{
+  display:none;
+}
+
+iframe{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100vw;
+  height:100vh;
+  border:none;
+  background:white;
+}
+
+#fullscreen-btn{
+  position:fixed;
+  top:5px;
+  left:5px;
+  width:22px;
+  height:22px;
+  border:none;
+  border-radius:4px;
+  font-size:11px;
+  cursor:pointer;
+  z-index:9999;
+  display:none;
+}
+</style>
 </head>
 
-<body style="text-align: center; padding: 0; border: 0; margin: 0;">
-    <div id='loading-text' style="color: black; font-family: cursive; font-size: 48px; text-align: center; margin-top: 20px;">LOADING...</div>
-    <canvas id="unity-canvas" tabindex="-1" hidden></canvas>
-    <script src="Build/ultrakill.loader.js"></script>
-    <script>
-        var canvas = document.querySelector("#unity-canvas");
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-            // Mobile device style: fill the whole browser client area with the game canvas:
-            var meta = document.createElement('meta');
-            meta.name = 'viewport';
-            meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-            document.getElementsByTagName('head')[0].appendChild(meta);
-            canvas.style.width = "100%";
-            canvas.style.height = "100%";
-            canvas.style.position = "fixed";
-            document.body.style.textAlign = "left";
-        } else {
-            function resizeCanvas() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-                canvas.style.width = window.innerWidth + "px";
-                canvas.style.height = window.innerHeight + "px";
-            }
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-        }
+<body>
 
-        function mergeFiles(fileParts) {
-            return new Promise((resolve, reject) => {
-                let buffers = [];
+<div id="panel">
 
-                function fetchPart(index) {
-                    if (index >= fileParts.length) {
-                        let mergedBlob = new Blob(buffers);
-                        let mergedFileUrl = URL.createObjectURL(mergedBlob);
-                        resolve(mergedFileUrl);
-                        return;
-                    }
-                    fetch(fileParts[index]).then((response) => response.arrayBuffer()).then((data) => {
-                        buffers.push(data);
-                        fetchPart(index + 1);
-                    }).catch(reject);
-                }
-                fetchPart(0);
-            });
-        }
+  <div id="drop-area">
+    Drag HTML file here or click to upload
+  </div>
 
-        function getParts(file, start, end) {
-            let parts = [];
-            for (let i = start; i <= end; i++) {
-                parts.push(file + ".part" + i);
-            }
-            return parts;
-        }
-        Promise.all([
-            mergeFiles(getParts("Build/ultrakill.data.unityweb", 1, 4)),
-            mergeFiles(getParts("Build/ultrakill.wasm.unityweb", 1, 2))
-        ]).then(([dataUrl, wasmurl]) => {
-            document.querySelector("#unity-canvas").hidden = false;
-            createUnityInstance(document.querySelector("#unity-canvas"), {
-                dataUrl: dataUrl,
-                frameworkUrl: "Build/ultrakill.framework.js.unityweb",
-                codeUrl: wasmurl,
-                streamingAssetsUrl: "StreamingAssets",
-                companyName: "Hakita and Cake Logic",
-                productName: "ULTRAKILL",
-                productVersion: "1.4",
-                // matchWebGLToCanvasSize: false, // Uncomment this to separately control WebGL canvas render size and DOM element size.
-                // devicePixelRatio: 1, // Uncomment this to override low DPI rendering on high DPI displays.
-            }).then((e) => {
-                document.querySelector("#loading-text").remove();
-            });
-        });
-    </script>
+  <input type="file" id="file-input" accept=".htm,.html">
+
+  <textarea id="html-input" placeholder="Or paste HTML code here..."></textarea>
+
+  <br>
+
+  <button id="run-html">Run HTML</button>
+
+</div>
+
+<button id="fullscreen-btn">F</button>
+
+<iframe id="file-content"></iframe>
+
+<script>
+var panel = document.getElementById("panel");
+var dropArea = document.getElementById("drop-area");
+var iframe = document.getElementById("file-content");
+var fileInput = document.getElementById("file-input");
+var htmlInput = document.getElementById("html-input");
+var runButton = document.getElementById("run-html");
+var fullscreenBtn = document.getElementById("fullscreen-btn");
+
+function renderHTML(html) {
+
+  htmlInput.value = '';
+
+  try {
+
+    var doc =
+      iframe.contentDocument ||
+      iframe.contentWindow.document;
+
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+  } catch(err) {
+
+    console.log(
+      "doc.write failed, using srcdoc fallback"
+    );
+
+    iframe.srcdoc = html;
+  }
+
+  panel.style.display = "none";
+  fullscreenBtn.style.display = "block";
+}
+
+function loadFile(file) {
+
+  if (!file) return;
+
+  var reader = new FileReader();
+
+  reader.onload = function(e) {
+    renderHTML(e.target.result);
+  };
+
+  reader.readAsText(file);
+}
+
+dropArea.addEventListener("click", function() {
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", function(e) {
+  loadFile(e.target.files[0]);
+});
+
+dropArea.addEventListener("dragover", function(e) {
+  e.preventDefault();
+  dropArea.classList.add("drag");
+});
+
+dropArea.addEventListener("dragleave", function() {
+  dropArea.classList.remove("drag");
+});
+
+dropArea.addEventListener("drop", function(e) {
+
+  e.preventDefault();
+
+  dropArea.classList.remove("drag");
+
+  var file = e.dataTransfer.files[0];
+
+  loadFile(file);
+});
+
+runButton.addEventListener("click", function() {
+  renderHTML(htmlInput.value);
+});
+
+fullscreenBtn.addEventListener("click", async function() {
+
+  try {
+
+    if (iframe.requestFullscreen) {
+
+      await iframe.requestFullscreen();
+
+    } else if (iframe.webkitRequestFullscreen) {
+
+      iframe.webkitRequestFullscreen();
+
+    } else if (iframe.msRequestFullscreen) {
+
+      iframe.msRequestFullscreen();
+
+    } else {
+
+      console.log("Fullscreen API not supported");
+
+    }
+
+  } catch(err) {
+
+    console.error(
+      "Fullscreen failed:",
+      err
+    );
+
+  }
+
+});
+</script>
+
 </body>
-
 </html>
+
